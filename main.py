@@ -1,25 +1,21 @@
-import os
-from fastapi import Header, HTTPException
-
 from __future__ import annotations
 
+import os
 from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, Header, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-
 from pydantic import BaseModel, Field
 
 from server_db import ServerDB
 
-app = FastAPI(title="Kiosk Sync Server", version="2.0.0")
+app = FastAPI(title="Kiosk Sync Server", version="2.1.0")
 
-# ---- server DB (SQLite) ----
-DB_PATH = "server.db"
-db = ServerDB(DB_PATH)
+# ---- server DB (Postgres if DATABASE_URL exists; else SQLite) ----
+db = ServerDB()
 db.init_schema()
 
 # ---- templates/static ----
@@ -93,8 +89,8 @@ class ConfigResponse(BaseModel):
     server_time_utc: str
 
 
-
-def verify_api_key(x_api_key: str | None):
+# ---------- Auth ----------
+def verify_api_key(x_api_key: str | None) -> None:
     expected = os.getenv("KIOSK_API_KEY")
     if not expected:
         # 서버 설정 실수 방지
@@ -167,13 +163,11 @@ def root():
 
 @app.get("/admin", response_class=HTMLResponse, include_in_schema=False)
 def admin_dashboard(request: Request):
-    # chart data
     rows = db.sales_by_day(last_days=14)
     labels = [r["day"] for r in rows]
     order_counts = [int(r["order_count"] or 0) for r in rows]
     revenues = [int(r["revenue"] or 0) for r in rows]
 
-    # quick stats (today)
     today_prefix = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     today_orders = db.list_orders(date_prefix=today_prefix, limit=999999)
     today_count = len(today_orders)
