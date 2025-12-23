@@ -1,0 +1,51 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Admin Dashboard</title>
+  <link rel="stylesheet" href="/static/admin.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand">Kiosk Admin</div>
+    <div class="nav">
+      <a href="/admin">Dashboard</a>
+      <a href="/admin/orders">Orders</a>
+    </div>
+  </div>
+
+  <div class="container">
+    <h1>Dashboard</h1>
+
+    <div class="cards">
+      <div class="card">
+        <div class="label">Today Orders</div>
+        <div class="value">{{ today_count }}</div>
+      </div>
+      <div class="card">
+        <div class="label">Today Revenue (KRW)</div>
+        <div class="value">{{ today_revenue }}</div>
+      </div>
+    </div>
+
+    <div class="grid">
+      <div class="panel">
+        <h2>Orders (Last 14 Days)</h2>
+        <canvas id="ordersChart"></canvas>
+      </div>
+      <div class="panel">
+        <h2>Revenue (Last 14 Days)</h2>
+        <canvas id="revenueChart"></canvas>
+      </div>
+    </div>
+
+    <script>
+      window.__labels = {{ labels | tojson }};
+      window.__orderCounts = {{ order_counts | tojson }};
+      window.__revenues = {{ revenues | tojson }};
+    </script>
+    <script src="/static/admin.js"></script>
+  </div>
+</body>
+</html>

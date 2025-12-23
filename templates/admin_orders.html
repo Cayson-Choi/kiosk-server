@@ -1,0 +1,55 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Admin Orders</title>
+  <link rel="stylesheet" href="/static/admin.css" />
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand">Kiosk Admin</div>
+    <div class="nav">
+      <a href="/admin">Dashboard</a>
+      <a href="/admin/orders">Orders</a>
+    </div>
+  </div>
+
+  <div class="container">
+    <h1>Orders</h1>
+
+    <form class="filters" method="get" action="/admin/orders">
+      <label>Date prefix (YYYY-MM-DD)</label>
+      <input name="date" value="{{ date }}" placeholder="2025-12-24" />
+      <label>Kiosk ID</label>
+      <input name="kiosk_id" value="{{ kiosk_id }}" placeholder="KIOSK-001" />
+      <button type="submit">Filter</button>
+      <a class="btn" href="/admin/export.json?date={{ date }}&kiosk_id={{ kiosk_id }}">Export JSON</a>
+    </form>
+
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Created (UTC)</th>
+          <th>Order ID</th>
+          <th>Kiosk</th>
+          <th>Total</th>
+          <th>Payment</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rows %}
+        <tr>
+          <td>{{ r.created_at_utc }}</td>
+          <td><a href="/admin/orders/{{ r.order_id }}">{{ r.order_id }}</a></td>
+          <td>{{ r.kiosk_id }}</td>
+          <td>{{ r.total }}</td>
+          <td>{{ r.payment_method }}</td>
+          <td>{{ r.payment_status }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</body>
+</html>

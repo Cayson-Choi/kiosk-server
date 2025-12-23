@@ -1,0 +1,53 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Order Detail</title>
+  <link rel="stylesheet" href="/static/admin.css" />
+</head>
+<body>
+  <div class="topbar">
+    <div class="brand">Kiosk Admin</div>
+    <div class="nav">
+      <a href="/admin">Dashboard</a>
+      <a href="/admin/orders">Orders</a>
+    </div>
+  </div>
+
+  <div class="container">
+    <h1>Order Detail</h1>
+
+    <div class="panel">
+      <div><b>Order ID:</b> {{ o.order_id }}</div>
+      <div><b>Kiosk ID:</b> {{ o.kiosk_id }}</div>
+      <div><b>Created (UTC):</b> {{ o.created_at_utc }}</div>
+      <div><b>Total:</b> {{ o.total }}</div>
+      <div><b>Payment:</b> {{ o.payment_method }}</div>
+      <div><b>Status:</b> {{ o.payment_status }}</div>
+    </div>
+
+    <div class="panel">
+      <h2>Items</h2>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Item ID</th><th>Name</th><th>Unit Price</th><th>Qty</th><th>Line Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for i in items %}
+          <tr>
+            <td>{{ i.item_id }}</td>
+            <td>{{ i.name }}</td>
+            <td>{{ i.unit_price }}</td>
+            <td>{{ i.qty }}</td>
+            <td>{{ i.line_total }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      <a class="btn" href="/admin/orders">Back</a>
+    </div>
+  </div>
+</body>
+</html>
