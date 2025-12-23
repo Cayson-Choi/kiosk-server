@@ -1,3 +1,6 @@
+import os
+from fastapi import Header, HTTPException
+
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -90,6 +93,17 @@ class ConfigResponse(BaseModel):
     server_time_utc: str
 
 
+
+def verify_api_key(x_api_key: str | None):
+    expected = os.getenv("KIOSK_API_KEY")
+    if not expected:
+        # 서버 설정 실수 방지
+        raise HTTPException(status_code=500, detail="API key not configured")
+
+    if x_api_key != expected:
+        raise HTTPException(status_code=401, detail="Invalid API key")
+
+
 # ---------- API ----------
 @app.get("/health", response_model=HealthResponse)
 def health():
@@ -106,7 +120,12 @@ def menu(since_version: Optional[int] = None):
 
 
 @app.post("/orders/upload", response_model=UploadOrdersResponse)
-def upload_orders(req: UploadOrdersRequest):
+def upload_orders(
+    req: UploadOrdersRequest,
+    x_api_key: str | None = Header(default=None),
+):
+    verify_api_key(x_api_key)
+
     accepted = 0
     duplicates = 0
     received = now_iso()
