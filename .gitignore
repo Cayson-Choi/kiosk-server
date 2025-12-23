@@ -1,14 +1,7 @@
-# Python cache
-__pycache__/
+﻿__pycache__/
 *.pyc
-
-# Virtual env
 .venv/
 venv/
-
-# Local server database
 server.db
-
-# OS
-Thumbs.db
-.DS_Store
+server.db-shm
+server.db-wal
