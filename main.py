@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import logging
 from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
 
@@ -12,7 +13,10 @@ from pydantic import BaseModel, Field
 
 from server_db import ServerDB
 
-app = FastAPI(title="Kiosk Sync Server", version="2.1.0")
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("kiosk-server")
+
+app = FastAPI(title="Kiosk Sync Server", version="2.2.0")
 
 # ---- server DB (Postgres if DATABASE_URL exists; else SQLite) ----
 db = ServerDB()
@@ -39,6 +43,8 @@ def now_iso() -> str:
 class HealthResponse(BaseModel):
     ok: bool = True
     time_utc: str
+    db_ok: bool = True
+    db_type: str = "unknown"
 
 
 class MenuItem(BaseModel):
@@ -93,9 +99,7 @@ class ConfigResponse(BaseModel):
 def verify_api_key(x_api_key: str | None) -> None:
     expected = os.getenv("KIOSK_API_KEY")
     if not expected:
-        # 서버 설정 실수 방지
         raise HTTPException(status_code=500, detail="API key not configured")
-
     if x_api_key != expected:
         raise HTTPException(status_code=401, detail="Invalid API key")
 
@@ -103,7 +107,25 @@ def verify_api_key(x_api_key: str | None) -> None:
 # ---------- API ----------
 @app.get("/health", response_model=HealthResponse)
 def health():
-    return HealthResponse(ok=True, time_utc=now_iso())
+    # DB 연결 확인 (엔진 생성/커넥션 실패면 여기서 잡힘)
+    db_ok = True
+    db_type = "unknown"
+    try:
+        url = getattr(db, "db_url", "")
+        if url.startswith("postgresql"):
+            db_type = "postgres"
+        elif url.startswith("sqlite"):
+            db_type = "sqlite"
+        else:
+            db_type = "other"
+        # connection test
+        with db.engine.connect() as conn:
+            conn.exec_driver_sql("SELECT 1")
+    except Exception as e:
+        db_ok = False
+        logger.exception("DB health check failed: %s", e)
+
+    return HealthResponse(ok=True, time_utc=now_iso(), db_ok=db_ok, db_type=db_type)
 
 
 @app.get("/menu", response_model=MenuResponse)
@@ -126,21 +148,30 @@ def upload_orders(
     duplicates = 0
     received = now_iso()
 
-    for o in req.orders:
-        inserted = db.upsert_order(
-            order_id=o.order_id,
-            kiosk_id=req.kiosk_id,
-            created_at_utc=o.created_at_utc,
-            total=o.total,
-            payment_method=o.payment_method,
-            payment_status=o.payment_status,
-            received_at_utc=received,
-            items=[i.model_dump() for i in o.items],
+    try:
+        for o in req.orders:
+            inserted = db.upsert_order(
+                order_id=o.order_id,
+                kiosk_id=req.kiosk_id,
+                created_at_utc=o.created_at_utc,
+                total=o.total,
+                payment_method=o.payment_method,
+                payment_status=o.payment_status,
+                received_at_utc=received,
+                items=[i.model_dump() for i in o.items],
+            )
+            if inserted:
+                accepted += 1
+            else:
+                duplicates += 1
+    except Exception as e:
+        # 500의 실제 원인을 Render Logs에 남기고,
+        # 클라이언트에도 detail로 내려서 즉시 원인 파악 가능하게 함.
+        logger.exception("upload_orders failed: %s", e)
+        raise HTTPException(
+            status_code=500,
+            detail=f"upload_orders failed: {type(e).__name__}: {e}",
         )
-        if inserted:
-            accepted += 1
-        else:
-            duplicates += 1
 
     return UploadOrdersResponse(accepted=accepted, duplicates=duplicates, received_at_utc=received)
 
