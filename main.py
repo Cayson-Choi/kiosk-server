@@ -259,3 +259,27 @@ def admin_export_json(date: Optional[str] = None, kiosk_id: Optional[str] = None
             }
         )
     return JSONResponse(out)
+
+from fastapi import Depends
+
+class ResetRequest(BaseModel):
+    pin: str
+
+@app.post("/admin/reset")
+def admin_reset(
+    body: ResetRequest,
+    x_api_key: str | None = Header(default=None),
+):
+    verify_api_key(x_api_key)
+
+    expected_pin = os.getenv("ADMIN_RESET_PIN")
+    if not expected_pin:
+        raise HTTPException(status_code=500, detail="ADMIN_RESET_PIN not set")
+
+    if body.pin != expected_pin:
+        raise HTTPException(status_code=403, detail="Invalid PIN")
+
+    db.execute("TRUNCATE TABLE order_items RESTART IDENTITY CASCADE;")
+    db.execute("TRUNCATE TABLE orders RESTART IDENTITY CASCADE;")
+
+    return {"ok": True, "message": "Server DB reset completed"}
